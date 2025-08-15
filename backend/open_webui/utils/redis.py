@@ -7,6 +7,10 @@ import redis
 
 from open_webui.env import REDIS_SENTINEL_MAX_RETRY_COUNT
 
+# Maintain backward compatibility with the previous constant name
+# used throughout the codebase and tests.
+MAX_RETRY_COUNT = REDIS_SENTINEL_MAX_RETRY_COUNT
+
 log = logging.getLogger(__name__)
 
 
@@ -191,7 +195,10 @@ def get_redis_connection(
 def get_sentinels_from_env(sentinel_hosts_env, sentinel_port_env):
     if sentinel_hosts_env:
         sentinel_hosts = sentinel_hosts_env.split(",")
-        sentinel_port = int(sentinel_port_env)
+        try:
+            sentinel_port = int(sentinel_port_env)
+        except (TypeError, ValueError):
+            sentinel_port = 26379
         return [(host, sentinel_port) for host in sentinel_hosts]
     return []
 
@@ -203,7 +210,11 @@ def get_sentinel_url_from_env(redis_url, sentinel_hosts_env, sentinel_port_env):
     auth_part = ""
     if username or password:
         auth_part = f"{username}:{password}@"
+    try:
+        sentinel_port = int(sentinel_port_env)
+    except (TypeError, ValueError):
+        sentinel_port = 26379
     hosts_part = ",".join(
-        f"{host}:{sentinel_port_env}" for host in sentinel_hosts_env.split(",")
+        f"{host}:{sentinel_port}" for host in sentinel_hosts_env.split(",")
     )
     return f"redis+sentinel://{auth_part}{hosts_part}/{redis_config['db']}/{redis_config['service']}"

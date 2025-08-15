@@ -6,6 +6,7 @@ from open_webui.utils.redis import (
     parse_redis_service_url,
     get_redis_connection,
     get_sentinels_from_env,
+    get_sentinel_url_from_env,
     MAX_RETRY_COUNT,
 )
 import inspect
@@ -55,6 +56,23 @@ class TestSentinelRedisProxy:
         """Test empty sentinel hosts"""
         result = get_sentinels_from_env(None, "26379")
         assert result == []
+
+    def test_get_sentinels_from_env_default_port(self):
+        """Missing port should fall back to default 26379"""
+        hosts = "sentinel1,sentinel2"
+        result = get_sentinels_from_env(hosts, None)
+        expected = [("sentinel1", 26379), ("sentinel2", 26379)]
+        assert result == expected
+
+    def test_get_sentinel_url_from_env_default_port(self):
+        """Missing port should fall back to default 26379 when building URL"""
+        redis_url = "redis://user:pass@mymaster:6379/0"
+        hosts = "sentinel1,sentinel2"
+        result = get_sentinel_url_from_env(redis_url, hosts, None)
+        expected = (
+            "redis+sentinel://user:pass@sentinel1:26379,sentinel2:26379/0/mymaster"
+        )
+        assert result == expected
 
     @patch("redis.sentinel.Sentinel")
     def test_sentinel_redis_proxy_sync_success(self, mock_sentinel_class):
